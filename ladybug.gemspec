@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.description = "Debug Ruby code using Chrome Devtools"
   s.authors     = ["Geoffrey Litt"]
   s.email       = 'gklitt@gmail.com'
-  s.files       = ["lib/ladybug.rb"]
+  s.files       = Dir.glob("lib/**/*") + %w(README.md)
   s.homepage    = 'http://rubygems.org/gems/ladybug'
   s.license     = 'MIT'
 
