@@ -16,7 +16,7 @@ more useful tool.
 
 Install the gem:
 
-`gem install ladybug`
+`gem install --pre ladybug`
 
 ladybug is implemented as a Rack middleware, so you'll need to add
 `Ladybug::Middleware` to the Rack middleware stack.
