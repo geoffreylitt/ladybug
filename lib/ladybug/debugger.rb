@@ -1,6 +1,10 @@
 # A simple debugger using set_trace_func
 # Allows for external control while in a breakpoint
 
+require 'parser/current'
+Parser::Builders::Default.emit_lambda = true
+Parser::Builders::Default.emit_procarg0 = true
+
 module Ladybug
   class Debugger
     def initialize
@@ -67,6 +71,20 @@ module Ladybug
       line_number = line_number.to_i
 
       @breakpoints.delete_if { |bp| bp[:id] == breakpoint_id }
+    end
+
+    # Given a filename and line number of a requested breakpoint,
+    # give the line number of the next possible breakpoint.
+    #
+    # A breakpoint can be set at the beginning of any single statement.
+    # (more details in #line_numbers_with_code)
+    def get_possible_breakpoints(filename, line_number)
+      code = File.read(filename)
+      parsed = Parser::CurrentRuby.parse(code)
+      next_possible_line =
+        line_numbers_with_code(parsed).sort.find { |line| line >= line_number }
+
+      next_possible_line.nil? ? [] : [next_possible_line]
     end
 
     private
@@ -151,6 +169,41 @@ module Ladybug
           @on_resume.call({})
         end
       }
+    end
+
+    # A breakpoint can be set at the beginning of any node where there is no
+    # begin (i.e. multi-line) node anywhere under the node
+    #
+    # Todo: memoizing the child node types of each node in our tree
+    # should make this a lot faster
+    def line_numbers_with_code(ast)
+      child_types = deep_child_node_types(ast)
+
+      if !child_types.include?(:begin) && !child_types.include?(:kwbegin)
+        expr = ast.loc.expression
+
+        if !expr.nil?
+          expr.begin.line
+        else
+          nil
+        end
+      else
+        ast.children.
+          select { |child| child.is_a? AST::Node }.
+          flat_map { |child| line_numbers_with_code(child) }.
+          compact.
+          uniq
+      end
+    end
+
+    # Return all unique types of AST nodes under this node,
+    # including the node itself
+    def deep_child_node_types(ast)
+      types = ast.children.flat_map do |child|
+        deep_child_node_types(child) if child.is_a? AST::Node
+      end.compact + [ast.type]
+
+      types.uniq
     end
   end
 end

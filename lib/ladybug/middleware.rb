@@ -79,8 +79,24 @@ module Ladybug
               scriptSource: File.new(path, "r").read
             }
           elsif data["method"] == "Debugger.getPossibleBreakpoints"
-            # Just echo back the location the browser requested
-            result = { locations: [ data["params"]["start"] ] }
+            script = @script_repository.find(id: data["params"]["start"]["scriptId"])
+
+            # we convert to/from 0-indexed line numbers in Chrome
+            # at the earliest/latest possible moment;
+            # in this gem, lines are 1-indexed
+            line_number = data["params"]["start"]["lineNumber"] + 1
+
+            breakpoint_lines = @debugger.get_possible_breakpoints(script.path, line_number)
+
+            locations = breakpoint_lines.map do |breakpoint_line|
+              {
+                scriptId: script.id,
+                lineNumber: breakpoint_line - 1,
+                columnNumber: 0
+              }
+            end
+
+            result = { locations: locations }
           elsif data["method"] == "Debugger.setBreakpointByUrl"
             # Chrome gives us a virtual URL;
             # we need an absolute path to the file to match the API for set_trace_func
