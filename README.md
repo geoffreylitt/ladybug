@@ -1,4 +1,4 @@
-# 🐞 Ladybug
+# 🐞 ladybug
 
 ladybug is a visual debugger for Ruby web applications that uses
 Chrome Devtools as a user interface.
@@ -14,11 +14,11 @@ more useful tool.
 
 ## Get started
 
-Install the gem:
+1) Install the gem:
 
 `gem install --pre ladybug`
 
-ladybug is implemented as a Rack middleware, so you'll need to add
+2) ladybug is implemented as a Rack middleware, so you'll need to add
 `Ladybug::Middleware` to the Rack middleware stack.
 For example, in Rails 5, add
 the following line to `config/application.rb`:
@@ -27,16 +27,25 @@ the following line to `config/application.rb`:
 config.middleware.insert_before(Rack::Sendfile, Ladybug::Middleware)
 ```
 
-Then start up your server and try making a request.
+3) Make sure you're using the puma web server, which is currently the
+only server that ladybug has been tested with.
+
+To use puma in Rails: add `gem 'puma'` to your `Gemfile` and `bundle install`.
+
+4) Then start up your server and try making a request.
 You should see your server program output something like:
 
 `Debug in Chrome: chrome-devtools://devtools/bundled/inspector.html?ws=localhost:3000`
 
-Navigate to that URL, and you'll see a Chrome Devtools window.
+5) Navigate to that URL, and you'll see a Chrome Devtools window.
 In the Sources tab, you can view your Ruby source code.
 If you set a breakpoint and then make another request to your server,
 it should pause on the breakpoint and you'll be able to inspect
 some variables in Devtools.
+
+**Security warning:** This debugger should only be run in local development.
+Running it on a server open to the internet could allow anyone to
+execute code on your server without authenticating.
 
 ## Development status
 
