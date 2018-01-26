@@ -41,6 +41,14 @@ module Ladybug
       @to_main_thread.push({ command: 'step_over' })
     end
 
+    def step_into
+      @to_main_thread.push({ command: 'step_into' })
+    end
+
+    def step_out
+      @to_main_thread.push({ command: 'step_out' })
+    end
+
     def evaluate(expression)
       @to_main_thread.push({
         command: 'eval',
@@ -89,9 +97,37 @@ module Ladybug
 
     private
 
-    def trace_func
-      @step_over_file = nil
+    # remove ladybug code from a callstack and prepare it for comparison
+    # this is a hack implemenetation for now, can be made better
+    def clean(callstack)
+      callstack.select { |frame| !frame.to_s.include? "ladybug" }.map(&:to_s)
+    end
 
+    def break?(callstack:)
+      result = false
+      current_callstack = Thread.current.backtrace_locations
+
+      if @break == 'step_over'
+        if clean(@breakpoint_callstack)[1] == clean(current_callstack)[1]
+          puts "breaking on step over"
+          result = true
+        end
+      elsif @break == 'step_into'
+        if clean(@breakpoint_callstack) == clean(current_callstack)[1..-1]
+          puts "breaking on step into"
+          result = true
+        end
+      elsif @break == 'step_out'
+        if clean(current_callstack) == clean(@breakpoint_callstack)[1..-1]
+          puts "breaking on step out"
+          result = true
+        end
+      end
+
+      result
+    end
+
+    def trace_func
       proc { |event, filename, line_number, id, binding, klass, *rest|
         # This check is called a lot so perhaps worth making faster,
         # but might not matter much with small number of breakpoints in practice
@@ -99,9 +135,9 @@ module Ladybug
           bp[:filename] == filename && bp[:line_number] == line_number
         end
 
-        break_on_step_over = (@step_over_file == filename)
-
-        if breakpoint_hit || break_on_step_over
+        if breakpoint_hit ||
+           break?(callstack: Thread.current.backtrace_locations)
+           # break?(call_stack: Thread.current.backtrace_locations)
           local_variables =
             binding.local_variables.each_with_object({}) do |lvar, hash|
               hash[lvar] = binding.local_variable_get(lvar)
@@ -147,12 +183,19 @@ module Ladybug
 
             case message[:command]
             when 'continue'
-              @step_over_file = nil
+              @break = nil
               break
             when 'step_over'
-              # todo: does "step over" really mean break in the same file,
-              # or is there are a deeper meaning
-              @step_over_file = filename
+              @break = 'step_over'
+              @breakpoint_callstack = Thread.current.backtrace_locations
+              break
+            when 'step_into'
+              @break = 'step_into'
+              @breakpoint_callstack = Thread.current.backtrace_locations
+              break
+            when 'step_out'
+              @break = 'step_out'
+              @breakpoint_callstack = Thread.current.backtrace_locations
               break
             when 'eval'
               evaluated =

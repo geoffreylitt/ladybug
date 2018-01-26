@@ -134,6 +134,16 @@ module Ladybug
             # we'll async hear back from the main thread when execution resumes
             @debugger.step_over
             result = {}
+          elsif data["method"] == "Debugger.stepInto"
+            # Synchronously just ack the command;
+            # we'll async hear back from the main thread when execution resumes
+            @debugger.step_into
+            result = {}
+          elsif data["method"] == "Debugger.stepOut"
+            # Synchronously just ack the command;
+            # we'll async hear back from the main thread when execution resumes
+            @debugger.step_out
+            result = {}
           elsif data["method"] == "Debugger.evaluateOnCallFrame"
             evaluated = @debugger.evaluate(data["params"]["expression"])
             result = {
