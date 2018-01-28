@@ -15,6 +15,8 @@ module Ladybug
 
       @on_pause = -> {}
       @on_resume = -> {}
+
+      @line_numbers_cache = {}
     end
 
     def start
@@ -63,6 +65,8 @@ module Ladybug
 
     # returns a breakpoint ID
     def set_breakpoint(filename:, line_number:)
+
+
       breakpoint = {
         filename: filename,
         line_number: line_number,
@@ -81,18 +85,16 @@ module Ladybug
       @breakpoints.delete_if { |bp| bp[:id] == breakpoint_id }
     end
 
-    # Given a filename and line number of a requested breakpoint,
-    # give the line number of the next possible breakpoint.
+    # Given a filename line number range of a requested breakpoint,
+    # give the line numbers of possible breakpoints.
     #
-    # A breakpoint can be set at the beginning of any single statement.
+    # In practice, start and end number tend to be the same when
+    # Chrome devtools is the client.
+    #
+    # A breakpoint can be set at the beginning of any Ruby statement.
     # (more details in #line_numbers_with_code)
-    def get_possible_breakpoints(filename, line_number)
-      code = File.read(filename)
-      parsed = Parser::CurrentRuby.parse(code)
-      next_possible_line =
-        line_numbers_with_code(parsed).sort.find { |line| line >= line_number }
-
-      next_possible_line.nil? ? [] : [next_possible_line]
+    def get_possible_breakpoints(path:, start_num:, end_num:)
+      (start_num..end_num).to_a & line_numbers_with_code(path)
     end
 
     private
@@ -214,12 +216,29 @@ module Ladybug
       }
     end
 
+    # get valid breakpoint lines for a file, with a memoize cache
+    # TODO: think about cache invalidation here;
+    # when do we know we have to re-parse a file?
+    # TODO: switch to memoist gem for concision
+    def line_numbers_with_code(path)
+      if !@line_numbers_cache.key?(path)
+        code = File.read(path)
+        ast = Parser::CurrentRuby.parse(code)
+        result = single_statement_lines(ast)
+        @line_numbers_cache[path] = result
+      end
+
+      @line_numbers_cache[path]
+    end
+
     # A breakpoint can be set at the beginning of any node where there is no
     # begin (i.e. multi-line) node anywhere under the node
     #
     # Todo: memoizing the child node types of each node in our tree
-    # should make this a lot faster
-    def line_numbers_with_code(ast)
+    # could make this a lot faster;
+    # for the moment we at least memoize on the file level so
+    # we only have to go through this whole thing once
+    def single_statement_lines(ast)
       child_types = deep_child_node_types(ast)
 
       if !child_types.include?(:begin) && !child_types.include?(:kwbegin)
@@ -233,7 +252,7 @@ module Ladybug
       else
         ast.children.
           select { |child| child.is_a? AST::Node }.
-          flat_map { |child| line_numbers_with_code(child) }.
+          flat_map { |child| single_statement_lines(child) }.
           compact.
           uniq
       end

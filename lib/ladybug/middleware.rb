@@ -84,9 +84,12 @@ module Ladybug
             # we convert to/from 0-indexed line numbers in Chrome
             # at the earliest/latest possible moment;
             # in this gem, lines are 1-indexed
-            line_number = data["params"]["start"]["lineNumber"] + 1
+            start_num = data["params"]["start"]["lineNumber"] + 1
+            end_num = data["params"]["end"]["lineNumber"] + 1
 
-            breakpoint_lines = @debugger.get_possible_breakpoints(script.path, line_number)
+            breakpoint_lines = @debugger.get_possible_breakpoints(
+              path: script.path, start_num: start_num, end_num: end_num
+            )
 
             locations = breakpoint_lines.map do |breakpoint_line|
               {
