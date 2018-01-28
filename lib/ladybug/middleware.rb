@@ -16,7 +16,8 @@ module Ladybug
       @scripts = {}
 
       @script_repository = ScriptRepository.new
-      @debugger = Debugger.new
+      @debugger =
+        Debugger.new(preload_paths: @script_repository.all.map(&:path))
       @object_manager = ObjectManager.new
     end
 
@@ -110,23 +111,27 @@ module Ladybug
             line_number = data["params"]["lineNumber"]
             ruby_line_number = line_number + 1
 
-            puts "setting breakpoint on #{script.path}:#{ruby_line_number}"
+            begin
+              breakpoint = @debugger.set_breakpoint(
+                filename: script.path,
+                line_number: ruby_line_number
+              )
 
-            breakpoint_id = @debugger.set_breakpoint(
-              filename: script.absolute_path,
-              line_number: ruby_line_number
-            )
-
-            result = {
-              breakpointId: breakpoint_id,
-              locations: [
-                {
-                  scriptId: script.id,
-                  lineNumber: line_number,
-                  columnNumber: data["params"]["columnNumber"],
-                }
-              ]
-            }
+              result = {
+                breakpointId: breakpoint[:id],
+                locations: [
+                  {
+                    scriptId: script.id,
+                    # todo: need to get these +/- transformations centralized.
+                    # a LineNumber class might be necessary...
+                    lineNumber: breakpoint[:line_number] - 1,
+                    columnNumber: data["params"]["columnNumber"],
+                  }
+                ]
+              }
+            rescue Debugger::InvalidBreakpointLocationError
+              result = {}
+            end
           elsif data["method"] == "Debugger.resume"
             # Synchronously just ack the command;
             # we'll async hear back from the main thread when execution resumes
