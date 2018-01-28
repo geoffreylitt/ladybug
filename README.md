@@ -6,7 +6,7 @@ Chrome Devtools as a user interface.
 It aims to provide a rich backend debugging experience in a UI that many
 web developers are already familiar with for debugging frontend Javascript.
 
-**This project is currently in a very early experimental phase.** Expect many limitations and bugs, and use at your own risk. If you try it out, please file
+**This project is currently in an early experimental phase.** Expect many limitations and bugs. If you try it out, please file
 Github issues or [email me](mailto:gklitt@gmail.com) to help make this a
 more useful tool.
 
@@ -14,9 +14,9 @@ more useful tool.
 
 ## Get started
 
-1) Install the gem:
+1) Install the gem, or add it to your Gemfile:
 
-`gem install --pre ladybug`
+`gem install ladybug`
 
 2) ladybug is implemented as a Rack middleware, so you'll need to add
 `Ladybug::Middleware` to the Rack middleware stack.
@@ -24,7 +24,7 @@ For example, in Rails 5, add
 the following line to `config/application.rb`:
 
 ```
-config.middleware.insert_before(Rack::Sendfile, Ladybug::Middleware)
+config.middleware.use(Ladybug::Middleware)
 ```
 
 3) Make sure you're using the puma web server, which is currently the
@@ -41,7 +41,11 @@ You should see your server program output something like:
 In the Sources tab, you can view your Ruby source code.
 If you set a breakpoint and then make another request to your server,
 it should pause on the breakpoint and you'll be able to inspect
-some variables in Devtools.
+local and instance variables in Devtools.
+
+6) You can then use the "step over" button to step through your code,
+   or "continue" to continue code execution. "Step into" and "Step out"
+   also work in some contexts.
 
 **Security warning:** This debugger should only be run in local development.
 Running it on a server open to the internet could allow anyone to
@@ -49,11 +53,10 @@ execute code on your server without authenticating.
 
 ## Development status
 
-* basic pause/continue breakpoint control is supported, but "step over" and "step into" aren't fully supported yet.
-* inspecting primtive objects like strings and numbers works okay; support for more complex objects is in development.
 * So far, ladybug has only been tested with simple Rails applications running on
 Rails 5 with the puma web server. Eventually it aims to support more Rack
 applications and web servers (and perhaps even non-Rack applications).
+* inspecting primtive objects like strings and numbers works okay; support for more complex objects is in development.
 
 ## Author
 
