@@ -12,4 +12,5 @@ Gem::Specification.new do |s|
 
   s.add_runtime_dependency "faye-websocket"
   s.add_runtime_dependency "parser"
+  s.add_runtime_dependency "memoist"
 end

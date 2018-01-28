@@ -5,8 +5,11 @@ require 'parser/current'
 Parser::Builders::Default.emit_lambda = true
 Parser::Builders::Default.emit_procarg0 = true
 
+require 'memoist'
+
 module Ladybug
   class Debugger
+    extend Memoist
 
     # preload_paths (optional):
     #   paths to pre-parse into Ruby code so that
@@ -25,7 +28,6 @@ module Ladybug
       # Todo: consider thread safety of mutating this hash
       Thread.new do
         preload_paths.each do |preload_path|
-          puts "preloading #{preload_path}"
           parse(preload_path)
         end
       end
@@ -102,8 +104,6 @@ module Ladybug
 
       @breakpoints.push(breakpoint)
 
-      puts "breakpoints: #{@breakpoints}"
-
       breakpoint
     end
 
@@ -131,36 +131,33 @@ module Ladybug
     # remove ladybug code from a callstack and prepare it for comparison
     # this is a hack implemenetation for now, can be made better
     def clean(callstack)
-      callstack.select { |frame| !frame.to_s.include? "ladybug" }.map(&:to_s)
+      callstack.drop_while { |frame| frame.to_s.include? "ladybug" }
     end
 
-    def break?(callstack:)
-      # this function is really slow right now.
-      # So for the moment, we just make it a no-op.
-      # This means over/in/out don't work; only break/continue are functional.
-      return false
+    # If we're in step over/in/out mode,
+    # detect if we should break even if there's not a breakpoint set here
+    def break_on_step?
+      # This is an important early return;
+      # we don't want to do anything w/ the callstack unless
+      # we're looking for a breakpoint, because
+      # that adds time to every single line of code execution
+      # which makes things really slow
+      return false if @break.nil?
 
-      result = false
-      current_callstack = Thread.current.backtrace_locations
+      bp_callstack = clean(@breakpoint_callstack)
+      current_callstack = clean(Thread.current.backtrace_locations)
 
       if @break == 'step_over'
-        if clean(@breakpoint_callstack)[1] == clean(current_callstack)[1]
-          puts "breaking on step over"
-          result = true
-        end
+        return bp_callstack[1].to_s == current_callstack[1].to_s
       elsif @break == 'step_into'
-        if clean(@breakpoint_callstack) == clean(current_callstack)[1..-1]
-          puts "breaking on step into"
-          result = true
-        end
+        return stacks_equal?(bp_callstack, current_callstack[1..-1])
       elsif @break == 'step_out'
-        if clean(current_callstack) == clean(@breakpoint_callstack)[1..-1]
-          puts "breaking on step out"
-          result = true
-        end
+        return stacks_equal?(current_callstack, bp_callstack[1..-1])
       end
+    end
 
-      result
+    def stacks_equal?(stack1, stack2)
+      stack1.map(&:to_s) == stack2.map(&:to_s)
     end
 
     def trace_func
@@ -171,7 +168,7 @@ module Ladybug
           bp[:filename] == filename && bp[:line_number] == line_number
         end
 
-        if breakpoint_hit || break?(callstack: Thread.current.backtrace_locations)
+        if breakpoint_hit || break_on_step?
           local_variables =
             binding.local_variables.each_with_object({}) do |lvar, hash|
               hash[lvar] = binding.local_variable_get(lvar)
@@ -251,7 +248,6 @@ module Ladybug
     # get valid breakpoint lines for a file, with a memoize cache
     # todo: we don't really need to cache this; parsing is the slow part
     def line_numbers_with_code(path)
-      code = File.read(path)
       ast = parse(path)
       single_statement_lines(ast)
     end
@@ -267,11 +263,6 @@ module Ladybug
 
     # A breakpoint can be set at the beginning of any node where there is no
     # begin (i.e. multi-line) node anywhere under the node
-    #
-    # Todo: memoizing the child node types of each node in our tree
-    # could make this a lot faster;
-    # for the moment we at least memoize on the file level so
-    # we only have to go through this whole thing once
     def single_statement_lines(ast)
       child_types = deep_child_node_types(ast)
 
@@ -293,7 +284,9 @@ module Ladybug
     end
 
     # Return all unique types of AST nodes under this node,
-    # including the node itself
+    # including the node itself.
+    #
+    # We memoize this because we repeatedly hit this for each AST
     def deep_child_node_types(ast)
       types = ast.children.flat_map do |child|
         deep_child_node_types(child) if child.is_a? AST::Node
@@ -301,6 +294,7 @@ module Ladybug
 
       types.uniq
     end
+    memoize :deep_child_node_types
 
     class InvalidBreakpointLocationError < StandardError; end
   end
