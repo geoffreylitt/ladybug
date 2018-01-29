@@ -99,12 +99,18 @@ module Ladybug
       elsif object.is_a? Hash
         object.
           map do |key, value|
-            kv = {
-              name: key,
-              value: serialize(value)
-            }
-
-            kv
+            # This is a temporary hack to avoid trying to serialize
+            # the massive contents of the @_env instance variable
+            # in Rails controllers. This should definitely be moved out
+            # to a Rails-specific module.
+            if key == :"@_env"
+              { name: "@_env", value: nil }
+            else
+              {
+                name: key,
+                value: serialize(value)
+              }
+            end
           end.
           reject { |property| property[:value].nil? }
       elsif object.is_a? Array

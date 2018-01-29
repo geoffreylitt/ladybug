@@ -174,6 +174,9 @@ module Ladybug
               hash[lvar] = binding.local_variable_get(lvar)
             end
 
+          # todo: may want to offer classes the ability to
+          # override this and define which instance variables to expose here?
+
           instance_variables =
             binding.eval("instance_variables").each_with_object({}) do |ivar, hash|
               hash[ivar] = binding.eval("instance_variable_get(:#{ivar})")
