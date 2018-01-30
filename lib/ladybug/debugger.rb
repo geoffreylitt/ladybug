@@ -25,6 +25,8 @@ module Ladybug
 
       @parsed_files = {}
 
+      @break = nil
+
       # Todo: consider thread safety of mutating this hash
       Thread.new do
         preload_paths.each do |preload_path|
@@ -147,6 +149,13 @@ module Ladybug
       bp_callstack = clean(@breakpoint_callstack)
       current_callstack = clean(Thread.current.backtrace_locations)
 
+      @line_count += 1
+      if @line_count % 500 == 0
+        puts "#{@line_count} lines checked"
+        puts current_callstack[0..2]
+        puts "============================="
+      end
+
       if @break == 'step_over'
         return bp_callstack[1].to_s == current_callstack[1].to_s
       elsif @break == 'step_into'
@@ -157,7 +166,10 @@ module Ladybug
     end
 
     def stacks_equal?(stack1, stack2)
-      stack1.map(&:to_s) == stack2.map(&:to_s)
+      # The length check avoids needing to perform an expensive
+      # transformation to string unless we really need to
+      stack1.length == stack2.length &&
+        stack1.map(&:to_s) == stack2.map(&:to_s)
     end
 
     def trace_func
@@ -221,14 +233,17 @@ module Ladybug
               break
             when 'step_over'
               @break = 'step_over'
+              @line_count = 0
               @breakpoint_callstack = Thread.current.backtrace_locations
               break
             when 'step_into'
               @break = 'step_into'
+              @line_count = 0
               @breakpoint_callstack = Thread.current.backtrace_locations
               break
             when 'step_out'
               @break = 'step_out'
+              @line_count = 0
               @breakpoint_callstack = Thread.current.backtrace_locations
               break
             when 'eval'
