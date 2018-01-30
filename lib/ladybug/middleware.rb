@@ -31,7 +31,9 @@ module Ladybug
         # Return async Rack response
         ws.rack_response
       else
-        @app.call(env)
+        @debugger.debug do
+          @app.call(env)
+        end
       end
     end
 
@@ -224,42 +226,50 @@ module Ladybug
 
         script = @script_repository.find(absolute_path: info[:filename])
 
-        location = {
-          scriptId: script.id,
-          lineNumber: info[:line_number] - 1,
-          columnNumber: 0
-        }
-
-        msg_to_client = {
-          method: "Debugger.paused",
-          params: {
-            callFrames: [
-              {
-                location: location,
-                callFrameId: SecureRandom.uuid,
-                functionName: info[:label],
-                scopeChain: [
-                  {
-                    type: "local",
-                    startLocation: location,
-                    endLocation: location,
-                    object: {
-                      className: "Object",
-                      description: "Object",
-                      type: "object",
-                      objectId: object_id
-                    }
-                  }
-                ],
-                url: script.virtual_url
-              }
-            ],
-            hitBreakpoints: info[:breakpoint_id] ? [info[:breakpoint_id]] : [],
-            reason: "other"
+        # currently we don't support going into functions
+        # that aren't in the path of our current app.
+        if script.nil?
+          puts "Debugger was paused on file outside of app: #{info[:filename]}"
+          puts "ladybug currently only supports pausing in app files."
+          @debugger.resume
+        else
+          location = {
+            scriptId: script.id,
+            lineNumber: info[:line_number] - 1,
+            columnNumber: 0
           }
-        }
 
-        ws.send(msg_to_client.to_json)
+          msg_to_client = {
+            method: "Debugger.paused",
+            params: {
+              callFrames: [
+                {
+                  location: location,
+                  callFrameId: SecureRandom.uuid,
+                  functionName: info[:label],
+                  scopeChain: [
+                    {
+                      type: "local",
+                      startLocation: location,
+                      endLocation: location,
+                      object: {
+                        className: "Object",
+                        description: "Object",
+                        type: "object",
+                        objectId: object_id
+                      }
+                    }
+                  ],
+                  url: script.virtual_url
+                }
+              ],
+              hitBreakpoints: info[:breakpoint_id] ? [info[:breakpoint_id]] : [],
+              reason: "other"
+            }
+          }
+
+          ws.send(msg_to_client.to_json)
+        end
       end
 
       @debugger.on_resume do
@@ -270,8 +280,6 @@ module Ladybug
 
         ws.send(msg_to_client.to_json)
       end
-
-      @debugger.start
 
       ws
     end

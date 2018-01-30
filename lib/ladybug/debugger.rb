@@ -25,6 +25,8 @@ module Ladybug
 
       @parsed_files = {}
 
+      @break = nil
+
       # Todo: consider thread safety of mutating this hash
       Thread.new do
         preload_paths.each do |preload_path|
@@ -39,6 +41,20 @@ module Ladybug
       }
 
       set_trace_func trace_func
+    end
+
+    def debug
+      RubyVM::InstructionSequence.compile_option = {
+        trace_instruction: true
+      }
+      Thread.current.set_trace_func trace_func
+
+      yield
+    ensure
+      RubyVM::InstructionSequence.compile_option = {
+        trace_instruction: false
+      }
+      Thread.current.set_trace_func nil
     end
 
     def on_pause(&block)
@@ -131,12 +147,12 @@ module Ladybug
     # remove ladybug code from a callstack and prepare it for comparison
     # this is a hack implemenetation for now, can be made better
     def clean(callstack)
-      callstack.drop_while { |frame| frame.to_s.include? "ladybug" }
+      callstack.drop_while { |frame| frame.to_s.include? "ladybug/debugger.rb" }
     end
 
     # If we're in step over/in/out mode,
     # detect if we should break even if there's not a breakpoint set here
-    def break_on_step?
+    def break_on_step?(filename:)
       # This is an important early return;
       # we don't want to do anything w/ the callstack unless
       # we're looking for a breakpoint, because
@@ -144,20 +160,19 @@ module Ladybug
       # which makes things really slow
       return false if @break.nil?
 
+      return false if @break == 'step_over' &&
+                      @breakpoint_filename != filename
+
       bp_callstack = clean(@breakpoint_callstack)
       current_callstack = clean(Thread.current.backtrace_locations)
 
       if @break == 'step_over'
-        return bp_callstack[1].to_s == current_callstack[1].to_s
+        return current_callstack[1].to_s == bp_callstack[1].to_s
       elsif @break == 'step_into'
-        return stacks_equal?(bp_callstack, current_callstack[1..-1])
+        return current_callstack[1].to_s == bp_callstack[0].to_s
       elsif @break == 'step_out'
-        return stacks_equal?(current_callstack, bp_callstack[1..-1])
+        return current_callstack[0].to_s == bp_callstack[1].to_s
       end
-    end
-
-    def stacks_equal?(stack1, stack2)
-      stack1.map(&:to_s) == stack2.map(&:to_s)
     end
 
     def trace_func
@@ -168,7 +183,7 @@ module Ladybug
           bp[:filename] == filename && bp[:line_number] == line_number
         end
 
-        if breakpoint_hit || break_on_step?
+        if breakpoint_hit || break_on_step?(filename: filename)
           local_variables =
             binding.local_variables.each_with_object({}) do |lvar, hash|
               hash[lvar] = binding.local_variable_get(lvar)
@@ -218,10 +233,12 @@ module Ladybug
             case message[:command]
             when 'continue'
               @break = nil
+              @breakpoint_filename = nil
               break
             when 'step_over'
               @break = 'step_over'
               @breakpoint_callstack = Thread.current.backtrace_locations
+              @breakpoint_filename = filename
               break
             when 'step_into'
               @break = 'step_into'
