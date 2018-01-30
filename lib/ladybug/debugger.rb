@@ -26,6 +26,7 @@ module Ladybug
       @parsed_files = {}
 
       @break = nil
+      @line_count = 0
 
       # Todo: consider thread safety of mutating this hash
       Thread.new do
@@ -41,6 +42,20 @@ module Ladybug
       }
 
       set_trace_func trace_func
+    end
+
+    def debug
+      RubyVM::InstructionSequence.compile_option = {
+        trace_instruction: true
+      }
+      Thread.current.set_trace_func trace_func
+
+      yield
+    ensure
+      RubyVM::InstructionSequence.compile_option = {
+        trace_instruction: false
+      }
+      Thread.current.set_trace_func nil
     end
 
     def on_pause(&block)
@@ -133,7 +148,11 @@ module Ladybug
     # remove ladybug code from a callstack and prepare it for comparison
     # this is a hack implemenetation for now, can be made better
     def clean(callstack)
-      callstack.drop_while { |frame| frame.to_s.include? "ladybug" }
+      # 7 here:
+      # 4-ish frames for ladybug code,
+      # + 2 frames we need for break checking,
+      # + 2 extra just to be safe
+      callstack[0..8].drop_while { |frame| frame.to_s.include? "ladybug/debugger.rb" }
     end
 
     # If we're in step over/in/out mode,
@@ -157,11 +176,11 @@ module Ladybug
       end
 
       if @break == 'step_over'
-        return bp_callstack[1].to_s == current_callstack[1].to_s
+        return current_callstack[1].to_s == bp_callstack[1].to_s
       elsif @break == 'step_into'
-        return stacks_equal?(bp_callstack, current_callstack[1..-1])
+        return current_callstack[1].to_s == bp_callstack[0].to_s
       elsif @break == 'step_out'
-        return stacks_equal?(current_callstack, bp_callstack[1..-1])
+        return current_callstack[0].to_s == bp_callstack[1].to_s
       end
     end
 
@@ -230,6 +249,7 @@ module Ladybug
             case message[:command]
             when 'continue'
               @break = nil
+              @line_count = 0
               break
             when 'step_over'
               @break = 'step_over'
