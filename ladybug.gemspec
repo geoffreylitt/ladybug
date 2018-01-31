@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'ladybug'
-  s.version     = '0.1.2'
+  s.version     = '0.1.3'
   s.date        = '2018-01-28'
   s.summary     = "Ladybug"
   s.description = "Debug Ruby code using Chrome Devtools"
@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.homepage    = 'http://rubygems.org/gems/ladybug'
   s.license     = 'MIT'
 
-  s.add_runtime_dependency "faye-websocket", "~> 0.10.7"
-  s.add_runtime_dependency "parser", "~> 2.4.0.2"
-  s.add_runtime_dependency "memoist", "~> 0.14.0"
+  s.add_runtime_dependency "faye-websocket", "~> 0.10"
+  s.add_runtime_dependency "parser", "~> 2.4"
+  s.add_runtime_dependency "memoist", "~> 0.14"
 end
