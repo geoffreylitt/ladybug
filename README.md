@@ -6,11 +6,11 @@ Chrome Devtools as a user interface.
 It aims to provide a rich backend debugging experience in a UI that many
 web developers are already familiar with for debugging frontend Javascript.
 
-**This project is currently in an early experimental phase.** Expect many limitations and bugs. If you try it out, please file
+**This project is currently in an experimental phase.** Expect many limitations and bugs. If you try it out, please file
 Github issues or [email me](mailto:gklitt@gmail.com) to help make this a
 more useful tool.
 
-![screenshot](screenshots/demo.png)
+![screenshot](screenshots/ladybug-demo.gif)
 
 ## Get started
 
@@ -53,7 +53,7 @@ execute code on your server without authenticating.
 
 ## Development status
 
-* So far, ladybug has only been tested with simple Rails applications running on
+* So far, ladybug has been tested with simple Rails applications running on
 Rails 5 with the puma web server. Eventually it aims to support more Rack
 applications and web servers (and perhaps even non-Rack applications).
 * inspecting primtive objects like strings and numbers works okay; support for more complex objects is in development.
