@@ -82,6 +82,8 @@ module Ladybug
     end
 
     def evaluate(expression)
+      raise InvalidExpressionError if !parseable?(expression)
+
       @to_main_thread.push({
         command: 'eval',
         arguments: {
@@ -143,6 +145,17 @@ module Ladybug
     end
 
     private
+
+    # Try parsing an expression to see if we can safely eval it
+    def parseable?(expression)
+      begin
+        Parser::CurrentRuby.parse(expression)
+      rescue Parser::SyntaxError
+        return false
+      end
+
+      return true
+    end
 
     # remove ladybug code from a callstack and prepare it for comparison
     # this is a hack implemenetation for now, can be made better
@@ -317,5 +330,6 @@ module Ladybug
     memoize :deep_child_node_types
 
     class InvalidBreakpointLocationError < StandardError; end
+    class InvalidExpressionError < StandardError; end
   end
 end

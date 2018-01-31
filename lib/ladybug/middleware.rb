@@ -39,6 +39,13 @@ module Ladybug
 
     private
 
+    # Avoid eval'ing weird expressions that Chrome sends us,
+    # like Javascript functions and other things.
+    # This is an initial hack implementation, could be better.
+    def sanitize_expression(expression)
+      expression
+    end
+
     def create_websocket(env)
       ws = Faye::WebSocket.new(env)
 
@@ -155,7 +162,17 @@ module Ladybug
             @debugger.step_out
             result = {}
           elsif data["method"] == "Debugger.evaluateOnCallFrame"
-            evaluated = @debugger.evaluate(data["params"]["expression"])
+            expression = data["params"]["expression"]
+
+            begin
+              evaluated = @debugger.evaluate(expression)
+            rescue Debugger::InvalidExpressionError
+              # A better thing to do would be to throw the syntax error
+              # back to the user, but for now we just return nil if
+              # given invalid input
+              evaluated = nil
+            end
+
             result = {
               result: @object_manager.serialize(evaluated)
             }
@@ -197,6 +214,26 @@ module Ladybug
 
               ws.send(message)
             end
+
+            # Create a runtime context so Chrome can
+            # accept user input in the console
+
+            message = {
+              method: "Runtime.executionContextCreated",
+              params: {
+                context: {
+                  id: 12, # random number for now
+                  name: "",
+                  origin: "http://localhost:3000" ,
+                  auxData: {
+                    isDefault: true,
+                    frameId: SecureRandom.uuid
+                  }
+                }
+              }
+            }.to_json
+
+            ws.send(message)
           end
         rescue => e
           puts e.message
