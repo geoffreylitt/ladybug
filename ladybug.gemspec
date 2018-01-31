@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'ladybug'
-  s.version     = '0.1.1'
+  s.version     = '0.1.2'
   s.date        = '2018-01-28'
   s.summary     = "Ladybug"
   s.description = "Debug Ruby code using Chrome Devtools"
