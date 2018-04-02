@@ -23,11 +23,18 @@ module Ladybug
 
         # Return async Rack response
         ws.rack_response
-      else
-        @debugger.start_session do |session|
-          env["debug_session"] = session
-          @app.call(env)
+      elsif env["REQUEST_PATH"] == "/debug"
+        expr = Rack::Request.new(env).params["expr"] || "n * 10"
+
+        app = Proc.new do |env|
+            ['200', {'Content-Type' => 'text/html'}, [@debugger.retro_eval(expr)]]
         end
+
+        app.call(env)
+      else
+        session = @debugger.new_session
+        env["debug_session"] = session
+        @app.call(env)
       end
     end
 

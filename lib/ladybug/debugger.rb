@@ -9,16 +9,31 @@ module Ladybug
       @sessions = []
     end
 
-    # Might be able to change this from yielding to just returning
-    def start_session
+    def new_session
       debug_session = DebugSession.new
       @sessions << debug_session
-      yield debug_session
+      debug_session
     end
+
+    def retro_eval(expr)
+      output = ""
+      @sessions.each do |session|
+        output += "#{session.id}\n"
+        session.watchpoints.each do |watchpoint|
+          output += "#{watchpoint[:binding].eval(expr)}\n"
+        end
+        output += "\n"
+      end
+
+      output
+    end
+
+    attr_accessor :sessions
   end
 
   class DebugSession
     def initialize
+      @id = SecureRandom.uuid
       @watchpoints = []
     end
 
@@ -35,5 +50,7 @@ module Ladybug
         expression: expression
       }
     end
+
+    attr_accessor :watchpoints, :id
   end
 end
