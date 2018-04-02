@@ -15,12 +15,12 @@ module Ladybug
       debug_session
     end
 
-    def retro_eval(expr)
+    def retro_eval(expression)
       output = ""
       @sessions.each do |session|
         output += "#{session.id}\n"
-        session.watchpoints.each do |watchpoint|
-          output += "#{watchpoint[:binding].eval(expr)}\n"
+        session.retro_eval(expression).each do |result|
+          output += "\t#{result[:id]}: #{result[:result]}\n"
         end
         output += "\n"
       end
@@ -37,6 +37,15 @@ module Ladybug
       @watchpoints = []
     end
 
+    def retro_eval(expression)
+      watchpoints.map do |watchpoint|
+        {
+          id: watchpoint[:id],
+          result: watchpoint[:binding].eval(expression)
+        }
+      end
+    end
+
     def debug(expression)
       caller_binding = binding.of_caller(1)
       caller_location = Thread.current.backtrace_locations[2]
@@ -47,7 +56,7 @@ module Ladybug
         id: SecureRandom.uuid,
         binding: caller_binding,
         location: caller_location,
-        expression: expression
+        result: expression
       }
     end
 

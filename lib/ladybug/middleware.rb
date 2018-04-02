@@ -27,7 +27,7 @@ module Ladybug
         expr = Rack::Request.new(env).params["expr"] || "n * 10"
 
         app = Proc.new do |env|
-            ['200', {'Content-Type' => 'text/html'}, [@debugger.retro_eval(expr)]]
+            ['200', {'Content-Type' => 'text/plain'}, [@debugger.retro_eval(expr)]]
         end
 
         app.call(env)
