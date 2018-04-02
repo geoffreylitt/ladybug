@@ -11,6 +11,6 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
 
   s.add_runtime_dependency "faye-websocket", "~> 0.10"
-  s.add_runtime_dependency "parser", "~> 2.4"
   s.add_runtime_dependency "memoist", "~> 0.14"
+  s.add_runtime_dependency "binding_of_caller"
 end

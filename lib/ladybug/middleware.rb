@@ -24,7 +24,8 @@ module Ladybug
         # Return async Rack response
         ws.rack_response
       else
-        @debugger.start_session do |d|
+        @debugger.start_session do |session|
+          env["debug_session"] = session
           @app.call(env)
         end
       end
@@ -49,6 +50,7 @@ module Ladybug
               id: 1,
               result: result
             }
+          end
 
           ws.send(response.to_json)
         rescue => e
@@ -71,7 +73,7 @@ module Ladybug
         msg_to_client = {
           method: "Debugger.print",
           params: {
-            watchpoint_id: 1
+            watchpoint_id: 1,
             output: "hello world"
           }
         }
