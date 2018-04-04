@@ -14,10 +14,6 @@ module Ladybug
     def initialize(app)
       @app = app
       @debugger = Debugger.new
-
-      @debugger.on_trace do |trace|
-        puts "hey there #{trace[:result]}"
-      end
     end
 
     def call(env)
@@ -46,6 +42,25 @@ module Ladybug
 
     def create_websocket(env)
       ws = Faye::WebSocket.new(env)
+
+      @debugger.on_trace do |trace|
+        puts "#{trace[:result]}"
+
+        serialized_trace = {
+          id: trace[:id],
+          result: trace[:result],
+          location: trace[:location].to_s
+        }
+
+        msg = {
+          method: "traceRecorded",
+          data: {
+            trace: serialized_trace
+          }
+        }
+
+        ws.send(msg.to_json)
+      end
 
       ws.on :message do |event|
         # The WebSockets library silently swallows errors.

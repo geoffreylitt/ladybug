@@ -7,6 +7,9 @@ module Ladybug
   class Debugger
     def initialize
       @sessions = []
+
+      # default trace callback: just print
+      @on_trace_callback = -> (trace) { puts trace[:result] }
     end
 
     def on_trace(&block)
@@ -60,7 +63,7 @@ module Ladybug
         result: expression
       }
 
-      parent.on_trace_callback(trace)
+      parent.on_trace_callback.call(trace)
       @traces << trace
     end
 
