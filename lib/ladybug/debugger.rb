@@ -9,8 +9,8 @@ module Ladybug
       @sessions = []
     end
 
-    def on_new_trace
-      yield trace
+    def on_trace(&block)
+      @on_trace_callback = block
     end
 
     def new_session
@@ -32,7 +32,7 @@ module Ladybug
       output
     end
 
-    attr_accessor :sessions
+    attr_accessor :sessions, :on_trace_callback
   end
 
   class DebugSession
@@ -60,7 +60,7 @@ module Ladybug
         result: expression
       }
 
-      parent.on_new_trace(trace)
+      parent.on_trace_callback(trace)
       @traces << trace
     end
 

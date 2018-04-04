@@ -15,7 +15,7 @@ module Ladybug
       @app = app
       @debugger = Debugger.new
 
-      @debugger.on_new_trace do |trace|
+      @debugger.on_trace do |trace|
         puts "hey there #{trace[:result]}"
       end
     end
