@@ -48,8 +48,9 @@ module Ladybug
 
         serialized_trace = {
           id: trace[:id],
+          sessionId: trace[:session].id,
           result: trace[:result],
-          location: trace[:location].to_s
+          watchpointId: trace[:watchpoint].id
         }
 
         msg = {
@@ -71,7 +72,7 @@ module Ladybug
 
           result = {}
 
-          if data["method"] == "test"
+          if data["method"] == "updateWatchpoint"
             response = {
               id: 1,
               result: result
