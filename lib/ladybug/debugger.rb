@@ -29,17 +29,12 @@ module Ladybug
       debug_session
     end
 
-    def retro_eval(expression)
-      output = ""
-      @sessions.each do |session|
-        output += "#{session.id}\n"
-        session.retro_eval(expression).each do |result|
-          output += "\t#{result[:location].path}:#{result[:location].lineno} / #{result[:result]}\n"
-        end
-        output += "\n"
-      end
-
-      output
+    def reevaluate_tracepoint(session_id:, tracepoint_id:, expression:)
+      session = @sessions.find { |s| s.id == session_id}
+      session.reevaluate_tracepoint(
+        tracepoint_id: tracepoint_id,
+        expression: expression
+      )
     end
 
     attr_accessor :sessions, :on_trace_callback
@@ -54,13 +49,13 @@ module Ladybug
       @tracepoints = []
     end
 
-    def retro_eval(expression)
-      traces.map do |trace|
-        {
-          id: trace[:id],
-          location: trace[:location],
-          result: trace[:binding].eval(expression),
-        }
+    def reevaluate_tracepoint(tracepoint_id:, expression:)
+      @traces.select do |trace|
+        trace[:tracepoint].id == tracepoint_id
+      end.map do |trace|
+        trace.merge(
+          result: trace[:binding].eval(expression)
+        )
       end
     end
 
@@ -76,7 +71,7 @@ module Ladybug
         id: Ladybug.random_id,
         session: self,
         binding: binding.of_caller(1),
-        tracePoint: tracepoint,
+        tracepoint: tracepoint,
         result: expression
       }
 

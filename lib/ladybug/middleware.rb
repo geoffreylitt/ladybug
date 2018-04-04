@@ -40,23 +40,25 @@ module Ladybug
 
     private
 
+    def serialize_trace(trace)
+      {
+        id: trace[:id],
+        sessionId: trace[:session].id,
+        result: trace[:result],
+        tracepointId: trace[:tracepoint].id
+      }
+    end
+
     def create_websocket(env)
       ws = Faye::WebSocket.new(env)
 
       @debugger.on_trace do |trace|
         puts "#{trace[:result]}"
 
-        serialized_trace = {
-          id: trace[:id],
-          sessionId: trace[:session].id,
-          result: trace[:result],
-          tracePointId: trace[:tracePoint].id
-        }
-
         msg = {
           method: "traceRecorded",
           data: {
-            trace: serialized_trace
+            trace: serialize_trace(trace)
           }
         }
 
@@ -72,14 +74,31 @@ module Ladybug
 
           result = {}
 
-          if data["method"] == "updateWatchpoint"
-            response = {
-              id: 1,
-              result: result
-            }
+          if data["method"] == "updateTracepoint"
+            begin
+              updated_traces = @debugger.reevaluate_tracepoint(
+                session_id: data["params"]["sessionId"],
+                tracepoint_id: data["params"]["tracepointId"],
+                expression: data["params"]["expression"]
+              )
+
+              updated_traces.each do |trace|
+                response = {
+                  method: "traceReevaluated",
+                  data: {
+                    trace: serialize_trace(trace)
+                  }
+                }
+
+                ws.send(response.to_json)
+              end
+            rescue => e
+              ws.send({
+                error: e.message
+              }.to_json)
+            end
           end
 
-          ws.send(response.to_json)
         rescue => e
           puts e.message
           puts e.backtrace
