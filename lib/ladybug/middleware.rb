@@ -14,6 +14,10 @@ module Ladybug
     def initialize(app)
       @app = app
       @debugger = Debugger.new
+
+      @debugger.on_new_trace do |trace|
+        puts "hey there #{trace[:result]}"
+      end
     end
 
     def call(env)
@@ -73,20 +77,7 @@ module Ladybug
         ws = nil
       end
 
-      # Spawn a thread to handle messages from the main thread
-      # and notify the client.
-
-      @debugger.on_print do |info|
-        msg_to_client = {
-          method: "Debugger.print",
-          params: {
-            watchpoint_id: 1,
-            output: "hello world"
-          }
-        }
-
-        ws.send(msg_to_client.to_json)
-      end
+      ws
     end
   end
 end

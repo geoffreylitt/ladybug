@@ -9,8 +9,12 @@ module Ladybug
       @sessions = []
     end
 
+    def on_new_trace
+      yield trace
+    end
+
     def new_session
-      debug_session = DebugSession.new
+      debug_session = DebugSession.new(parent: self)
       @sessions << debug_session
       debug_session
     end
@@ -20,7 +24,7 @@ module Ladybug
       @sessions.each do |session|
         output += "#{session.id}\n"
         session.retro_eval(expression).each do |result|
-          output += "\t#{result[:id]}: #{result[:result]}\n"
+          output += "\t#{result[:location].path}:#{result[:location].lineno} / #{result[:result]}\n"
         end
         output += "\n"
       end
@@ -32,34 +36,34 @@ module Ladybug
   end
 
   class DebugSession
-    def initialize
+    def initialize(parent:)
       @id = SecureRandom.uuid
-      @watchpoints = []
+      @traces = []
+      @parent = parent
     end
 
     def retro_eval(expression)
-      watchpoints.map do |watchpoint|
+      traces.map do |trace|
         {
-          id: watchpoint[:id],
-          result: watchpoint[:binding].eval(expression)
+          id: trace[:id],
+          location: trace[:location],
+          result: trace[:binding].eval(expression),
         }
       end
     end
 
     def debug(expression)
-      caller_binding = binding.of_caller(1)
-      caller_location = Thread.current.backtrace_locations[2]
-
-      puts "debug: #{expression}"
-
-      @watchpoints << {
+      trace = {
         id: SecureRandom.uuid,
-        binding: caller_binding,
-        location: caller_location,
+        binding: binding.of_caller(1),
+        location: Thread.current.backtrace_locations[2],
         result: expression
       }
+
+      parent.on_new_trace(trace)
+      @traces << trace
     end
 
-    attr_accessor :watchpoints, :id
+    attr_accessor :traces, :id, :parent
   end
 end
