@@ -51,7 +51,7 @@ module Ladybug
       @id = Ladybug.random_id
       @traces = []
       @parent = parent
-      @watchpoints = []
+      @tracepoints = []
     end
 
     def retro_eval(expression)
@@ -67,16 +67,16 @@ module Ladybug
     def debug(expression)
       caller_location = Thread.current.backtrace_locations[2]
 
-      watchpoint = @watchpoints.find { |w| w.location.to_s == caller_location.to_s } ||
-                   Watchpoint.new(location: caller_location )
-      @watchpoints << watchpoint
+      tracepoint = @tracepoints.find { |w| w.location.to_s == caller_location.to_s } ||
+                   Tracepoint.new(location: caller_location )
+      @tracepoints << tracepoint
 
       # The trace as a hash, containing rich objects not serialized yet
       trace = {
         id: Ladybug.random_id,
         session: self,
         binding: binding.of_caller(1),
-        watchpoint: watchpoint,
+        tracePoint: tracepoint,
         result: expression
       }
 
@@ -88,7 +88,7 @@ module Ladybug
   end
 
   # A point where the user has put a debug statement
-  class Watchpoint
+  class Tracepoint
     def initialize(location:)
       @id = Ladybug.random_id
       @location = location

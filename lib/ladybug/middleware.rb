@@ -50,7 +50,7 @@ module Ladybug
           id: trace[:id],
           sessionId: trace[:session].id,
           result: trace[:result],
-          watchpointId: trace[:watchpoint].id
+          tracePointId: trace[:tracePoint].id
         }
 
         msg = {
