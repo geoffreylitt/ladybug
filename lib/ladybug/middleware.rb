@@ -94,7 +94,8 @@ module Ladybug
               end
             rescue => e
               ws.send({
-                error: e.message
+                error: e.message,
+                backtrace: e.backtrace
               }.to_json)
             end
           end
